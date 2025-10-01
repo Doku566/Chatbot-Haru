@@ -79,6 +79,10 @@ def chat():
 model_name = "EleutherAI/gpt-neo-125M"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
+
+# Forzar uso de CPU (evita errores en entornos sin GPU)
+device = torch.device("cpu")
+model.to(device)
 tokenizer.pad_token = tokenizer.eos_token  # evitar warning de pad_token
 
 @app.route("/chat-ia", methods=["POST"])
@@ -102,13 +106,13 @@ def chat_ia():
     )
 
     try:
-        inputs = tokenizer.encode(prompt, return_tensors="pt")
-        attention_mask = (inputs != tokenizer.pad_token_id).long()
+        inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        attention_mask = (inputs != tokenizer.pad_token_id).long().to(device)
 
         outputs = model.generate(
             inputs,
             attention_mask=attention_mask,
-            max_new_tokens=150,  # solo tokens generados
+            max_new_tokens=150,
             pad_token_id=tokenizer.pad_token_id,
             do_sample=True,
             top_p=0.9,
@@ -129,7 +133,6 @@ def chat_ia():
         respuesta = "❌ Error al comunicarse con el bot."
 
     return jsonify({"respuesta": respuesta})
-
 
 if __name__ == "__main__":
     app.run(debug=True)
