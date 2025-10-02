@@ -75,15 +75,15 @@ def chat():
     respuesta = respuestas.get(intent, respuestas["desconocido"])
     return jsonify({"respuesta": respuesta})
 
+
 # --- Bot IA conversacional ---
-model_name = "EleutherAI/gpt-neo-125M"
+model_name = "microsoft/DialoGPT-small"  # modelo liviano (~100 MB)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
-# Forzar uso de CPU (evita errores en entornos sin GPU)
 device = torch.device("cpu")
 model.to(device)
-tokenizer.pad_token = tokenizer.eos_token  # evitar warning de pad_token
+tokenizer.pad_token = tokenizer.eos_token
 
 @app.route("/chat-ia", methods=["POST"])
 def chat_ia():
@@ -99,25 +99,20 @@ def chat_ia():
 
     prompt = (
         "Responde SIEMPRE en español.\n"
-        "Eres un asistente virtual profesional, amable, conciso y coherente.\n"
-        "Puedes ayudar con escuela, tecnología, investigación, reservaciones de hotel/restaurante y mantenimiento de computadoras.\n"
-        "Máximo 2-3 frases por respuesta, mantén tono cordial.\n"
+        "Eres un asistente virtual amable y profesional.\n"
+        "Responde con frases cortas y claras (máx. 2–3 oraciones).\n"
         f"{contexto}\nBot:"
     )
 
     try:
         inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
-        attention_mask = (inputs != tokenizer.pad_token_id).long().to(device)
-
         outputs = model.generate(
             inputs,
-            attention_mask=attention_mask,
-            max_new_tokens=150,
+            max_new_tokens=80,
             pad_token_id=tokenizer.pad_token_id,
             do_sample=True,
             top_p=0.9,
             temperature=0.7,
-            no_repeat_ngram_size=3
         )
 
         respuesta = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -133,6 +128,7 @@ def chat_ia():
         respuesta = "❌ Error al comunicarse con el bot."
 
     return jsonify({"respuesta": respuesta})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
