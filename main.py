@@ -70,8 +70,8 @@ def chat():
     respuesta = respuestas.get(intent, respuestas["desconocido"])
     return jsonify({"respuesta": respuesta})
 
-# --- Bot IA conversacional liviano ---
-model_name = "microsoft/DialoGPT-small"
+# --- Bot IA conversacional liviano local ---
+model_name = "microsoft/DialoGPT-small"  # modelo pequeño (~100MB)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
@@ -89,20 +89,13 @@ def chat_ia():
         user_sessions[user_id] = {"historial": []}
 
     historial = user_sessions[user_id]["historial"]
-    contexto = "\n".join(historial[-4:] + [f"Usuario: {mensaje}"])
-
-    prompt = (
-        "Responde SIEMPRE en español.\n"
-        "Eres un asistente virtual amable y profesional.\n"
-        "Responde con frases cortas (2–3 oraciones).\n"
-        f"{contexto}\nBot:"
-    )
+    contexto = " ".join(historial[-4:] + [f"Usuario: {mensaje}"])
 
     try:
-        inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        inputs = tokenizer.encode(contexto + " Bot:", return_tensors="pt").to(device)
         outputs = model.generate(
             inputs,
-            max_new_tokens=60,  # más rápido
+            max_new_tokens=50,  # rápido y ligero
             pad_token_id=tokenizer.pad_token_id,
             do_sample=True,
             top_p=0.9,
