@@ -17,12 +17,12 @@ intents = {
 
 respuestas = {
     "escuela": "📚 Puedo ayudarte con información de la escuela o clases.",
-    "tecnologia": "💻 Soy experto en temas de tecnología y software.",
+    "tecnologia": "💻 Soy experto en tecnología y software.",
     "investigacion": "🔬 Te ayudo con investigación y proyectos académicos.",
-    "hotel": "🏨 Claro, puedo ayudarte con reservaciones de hotel. ¿A qué nombre hacemos la reservación?",
-    "restaurante": "🍽️ Perfecto, hagamos una reservación en restaurante. ¿A qué nombre reservo la mesa?",
-    "mantenimiento": "🛠️ Ofrecemos servicio de mantenimiento y reparación de computadoras. ¿Qué problema tiene tu equipo?",
-    "desconocido": "🤖 No entendí bien. Puedo ayudarte con Escuela, Tecnología, Investigación, Hotel, Restaurante o Mantenimiento."
+    "hotel": "🏨 Puedo ayudarte con reservaciones de hotel. ¿A qué nombre hacemos la reservación?",
+    "restaurante": "🍽️ Hagamos una reservación en restaurante. ¿A qué nombre?",
+    "mantenimiento": "🛠️ Servicio de mantenimiento de computadoras. ¿Qué problema tienes?",
+    "desconocido": "🤖 No entendí. Puedo ayudarte con Escuela, Tecnología, Investigación, Hotel, Restaurante o Mantenimiento."
 }
 
 # --- Estado de la sesión ---
@@ -42,7 +42,7 @@ def clasificar_intencion(texto):
 def home():
     return render_template("index.html")
 
-# --- Bot general (categorías y reservaciones) ---
+# --- Bot de categorías y reservaciones ---
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -51,7 +51,6 @@ def chat():
 
     if user_id in user_sessions:
         session = user_sessions[user_id]
-
         if "nombre" not in session:
             session["nombre"] = mensaje
             return jsonify({"respuesta": "Perfecto 👍, ¿qué fecha necesitas la reservación?"})
@@ -60,24 +59,19 @@ def chat():
             return jsonify({"respuesta": "Anotado 📅. ¿A qué hora?"})
         elif "hora" not in session:
             session["hora"] = mensaje
-            respuesta_final = (
-                f"✅ Reservación confirmada para {session['nombre']} "
-                f"el {session['fecha']} a las {session['hora']}."
-            )
+            respuesta_final = f"✅ Reservación confirmada para {session['nombre']} el {session['fecha']} a las {session['hora']}."
             del user_sessions[user_id]
             return jsonify({"respuesta": respuesta_final})
 
     intent = clasificar_intencion(mensaje)
-
     if intent in ["hotel", "restaurante"]:
         user_sessions[user_id] = {"tipo": intent}
 
     respuesta = respuestas.get(intent, respuestas["desconocido"])
     return jsonify({"respuesta": respuesta})
 
-
-# --- Bot IA conversacional ---
-model_name = "microsoft/DialoGPT-small"  # modelo liviano (~100 MB)
+# --- Bot IA conversacional liviano ---
+model_name = "microsoft/DialoGPT-small"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
@@ -100,7 +94,7 @@ def chat_ia():
     prompt = (
         "Responde SIEMPRE en español.\n"
         "Eres un asistente virtual amable y profesional.\n"
-        "Responde con frases cortas y claras (máx. 2–3 oraciones).\n"
+        "Responde con frases cortas (2–3 oraciones).\n"
         f"{contexto}\nBot:"
     )
 
@@ -108,13 +102,12 @@ def chat_ia():
         inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
         outputs = model.generate(
             inputs,
-            max_new_tokens=80,
+            max_new_tokens=60,  # más rápido
             pad_token_id=tokenizer.pad_token_id,
             do_sample=True,
             top_p=0.9,
             temperature=0.7,
         )
-
         respuesta = tokenizer.decode(outputs[0], skip_special_tokens=True)
         if "Bot:" in respuesta:
             respuesta = respuesta.split("Bot:")[-1].strip()
@@ -129,6 +122,5 @@ def chat_ia():
 
     return jsonify({"respuesta": respuesta})
 
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8000)
