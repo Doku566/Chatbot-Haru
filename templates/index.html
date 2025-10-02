@@ -137,7 +137,7 @@
             <li><i class="fas fa-database icon"></i> Sistema de categorización y gestión de reservaciones</li>
             <li><i class="fas fa-code icon"></i> Lenguajes: Python, JavaScript, HTML, CSS</li>
             <li><i class="fas fa-microchip icon"></i> Modelo usado: EleutherAI GPT-Neo 125M</li>
-            <li><i class="fas fa-globe icon"></i> Backend alojado en: Render</li>
+            <li><i class="fas fa-globe icon"></i> Backend alojado en: Railway</li>
         </ul>
     </section>
 
@@ -161,6 +161,7 @@
         const toggleButton = document.getElementById("toggle-ia");
 
         let modoIA = false;
+        const BASE_URL = "https://chatbot-haru-production.up.railway.app"; // Mismo dominio backend
 
         toggleButton.addEventListener("click", () => {
             modoIA = !modoIA;
@@ -189,9 +190,7 @@
             addMessage(text, "user");
             input.value = "";
 
-            const endpoint = modoIA 
-                ? "https://chatbot-haru.onrender.com/chat-ia" 
-                : "https://chatbot-haru.onrender.com/chat";
+            const endpoint = modoIA ? `${BASE_URL}/chat-ia` : `${BASE_URL}/chat`;
 
             try {
                 const response = await fetch(endpoint, {
@@ -199,17 +198,25 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ mensaje: text })
                 });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
                 const data = await response.json();
                 addMessage(data.respuesta, "bot");
             } catch (err) {
-                addMessage("❌ Error al comunicarse con el bot.", "bot");
-                console.error(err);
+                addMessage("❌ Error al comunicarse con el bot. Intenta recargar la página.", "bot");
+                console.error("Error en fetch:", err);
             }
         }
 
         send.addEventListener("click", sendMessage);
         input.addEventListener("keypress", e => {
             if (e.key === "Enter") sendMessage();
+        });
+    </script>
+</body>
+</html>
+
         });
     </script>
 </body>
