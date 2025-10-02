@@ -71,7 +71,8 @@ def chat():
     return jsonify({"respuesta": respuesta})
 
 # --- Bot IA conversacional liviano local ---
-model_name = "microsoft/DialoGPT-small"  # modelo pequeño (~100MB)
+model_name = "distilgpt2"  # ~250 MB, más rápido y ligero
+  # modelo pequeño (~100MB)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
