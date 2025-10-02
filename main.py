@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify, render_template
+import random
 import re
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
 
 app = Flask(__name__)
 
-# --- Intenciones ---
+# --- Categorías y palabras clave ---
 intents = {
     "escuela": ["clases", "escuela", "estudiante", "profesor", "tareas"],
     "tecnologia": ["software", "tecnologia", "app", "programa", "sistema"],
@@ -15,14 +14,43 @@ intents = {
     "mantenimiento": ["computadora", "pc", "mantenimiento", "reparar", "servicio tecnico"]
 }
 
-respuestas = {
-    "escuela": "📚 Puedo ayudarte con información de la escuela o clases.",
-    "tecnologia": "💻 Soy experto en tecnología y software.",
-    "investigacion": "🔬 Te ayudo con investigación y proyectos académicos.",
-    "hotel": "🏨 Puedo ayudarte con reservaciones de hotel. ¿A qué nombre hacemos la reservación?",
-    "restaurante": "🍽️ Hagamos una reservación en restaurante. ¿A qué nombre?",
-    "mantenimiento": "🛠️ Servicio de mantenimiento de computadoras. ¿Qué problema tienes?",
-    "desconocido": "🤖 No entendí. Puedo ayudarte con Escuela, Tecnología, Investigación, Hotel, Restaurante o Mantenimiento."
+# --- Respuestas simuladas IA Beta ---
+responses_beta = {
+    "escuela": [
+        "📚 Estoy en modo Beta, pero puedo ayudarte con información escolar.",
+        "🤖 Beta AI: Recuerda entregar tus tareas a tiempo.",
+        "📖 Beta dice: Si tienes dudas de clase, pregunta y te ayudaré."
+    ],
+    "tecnologia": [
+        "💻 Beta AI: La tecnología avanza rápido, ¿quieres aprender algo nuevo?",
+        "🤖 Puedo darte tips de software y apps, aunque estoy en Beta.",
+        "⚙️ Beta: Recomiendo mantener tu sistema actualizado."
+    ],
+    "investigacion": [
+        "🔬 Beta AI: Puedo sugerir ideas para tu proyecto o tesis.",
+        "📄 Beta: Recuerda documentar todo tu laboratorio.",
+        "🧪 Beta dice: La investigación requiere paciencia y curiosidad."
+    ],
+    "hotel": [
+        "🏨 Beta AI: Hagamos una reservación de hotel. ¿A qué nombre?",
+        "🤖 Beta: Puedo ayudarte a confirmar tu habitación.",
+        "📅 Beta: ¿Qué fecha necesitas la reservación?"
+    ],
+    "restaurante": [
+        "🍽️ Beta AI: Hagamos una reservación de mesa. ¿A qué nombre?",
+        "🤖 Beta: Puedo ayudarte a elegir el mejor restaurante.",
+        "📌 Beta: No olvides revisar el horario de atención."
+    ],
+    "mantenimiento": [
+        "🛠️ Beta AI: Puedo guiarte para arreglar tu computadora.",
+        "💻 Beta dice: Revisa primero las conexiones y cables.",
+        "🔧 Beta: Describe el problema y te doy instrucciones."
+    ],
+    "desconocido": [
+        "🤖 Beta AI: No entendí bien, pero puedo ayudarte con escuela, tecnología, investigación, hotel, restaurante o mantenimiento.",
+        "💡 Beta: Intenta preguntarme algo diferente.",
+        "❓ Beta AI: Estoy aprendiendo, intenta reformular tu pregunta."
+    ]
 }
 
 # --- Estado de la sesión ---
@@ -42,13 +70,14 @@ def clasificar_intencion(texto):
 def home():
     return render_template("index.html")
 
-# --- Bot de categorías y reservaciones ---
+# --- Bot general ---
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     mensaje = data.get("mensaje", "")
     user_id = "default"
 
+    # Manejo de sesiones para reservaciones
     if user_id in user_sessions:
         session = user_sessions[user_id]
         if "nombre" not in session:
@@ -63,57 +92,11 @@ def chat():
             del user_sessions[user_id]
             return jsonify({"respuesta": respuesta_final})
 
+    # Clasificar intención y responder
     intent = clasificar_intencion(mensaje)
+    respuesta = random.choice(responses_beta.get(intent, responses_beta["desconocido"]))
     if intent in ["hotel", "restaurante"]:
         user_sessions[user_id] = {"tipo": intent}
-
-    respuesta = respuestas.get(intent, respuestas["desconocido"])
-    return jsonify({"respuesta": respuesta})
-
-# --- Bot IA conversacional liviano local ---
-model_name = "distilgpt2"  # ~250 MB, más rápido y ligero
-  # modelo pequeño (~100MB)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
-
-device = torch.device("cpu")
-model.to(device)
-tokenizer.pad_token = tokenizer.eos_token
-
-@app.route("/chat-ia", methods=["POST"])
-def chat_ia():
-    data = request.get_json()
-    mensaje = data.get("mensaje", "")
-    user_id = "default"
-
-    if user_id not in user_sessions:
-        user_sessions[user_id] = {"historial": []}
-
-    historial = user_sessions[user_id]["historial"]
-    contexto = " ".join(historial[-4:] + [f"Usuario: {mensaje}"])
-
-    try:
-        inputs = tokenizer.encode(contexto + " Bot:", return_tensors="pt").to(device)
-        outputs = model.generate(
-            inputs,
-            max_new_tokens=50,  # rápido y ligero
-            pad_token_id=tokenizer.pad_token_id,
-            do_sample=True,
-            top_p=0.9,
-            temperature=0.7,
-        )
-        respuesta = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        if "Bot:" in respuesta:
-            respuesta = respuesta.split("Bot:")[-1].strip()
-        respuesta = respuesta.split("\n")[0].strip()
-
-        historial.append(f"Usuario: {mensaje}")
-        historial.append(f"Bot: {respuesta}")
-
-    except Exception as e:
-        print("Error del modelo:", e)
-        respuesta = "❌ Error al comunicarse con el bot."
-
     return jsonify({"respuesta": respuesta})
 
 if __name__ == "__main__":
