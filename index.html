@@ -154,63 +154,68 @@
         </div>
     </section>
 
-    <script>
-        const messages = document.getElementById("messages");
-        const input = document.getElementById("input");
-        const send = document.getElementById("send");
-        const toggleButton = document.getElementById("toggle-ia");
+<script>
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+    const toggleButton = document.getElementById("toggle-ia");
 
-        let modoIA = false;
+    let modoIA = false;
 
-        toggleButton.addEventListener("click", () => {
-            modoIA = !modoIA;
-            toggleButton.textContent = modoIA ? "Modo IA: Activado" : "Modo IA: Desactivado";
-            addMessage(`🤖 Modo IA ${modoIA ? "activado" : "desactivado"}`, "bot");
-        });
+    toggleButton.addEventListener("click", () => {
+        modoIA = !modoIA;
+        toggleButton.textContent = modoIA ? "Modo IA: Activado" : "Modo IA: Desactivado";
+        addMessage(`🤖 Modo IA ${modoIA ? "activado" : "desactivado"}`, "bot");
+    });
 
-        // Mensaje de bienvenida
-        window.onload = function() {
-            addMessage("👋 Hola, soy tu Chatbot IA. Puedo ayudarte con:", "bot");
-            addMessage("📚 Escuela\n💻 Tecnología\n🔬 Investigación\n🏨 Reservaciones de Hotel\n🍽️ Reservaciones de Restaurante\n🛠️ Servicios de mantenimiento de computadoras", "bot");
-            addMessage("Escribe tu mensaje o usa el toggle para modo IA 🚀", "bot");
-        };
+    // Mensaje de bienvenida
+    window.onload = function() {
+        addMessage("👋 Hola, soy tu Chatbot IA. Puedo ayudarte con:", "bot");
+        addMessage("📚 Escuela\n💻 Tecnología\n🔬 Investigación\n🏨 Reservaciones de Hotel\n🍽️ Reservaciones de Restaurante\n🛠️ Servicios de mantenimiento de computadoras", "bot");
+        addMessage("Escribe tu mensaje o usa el toggle para modo IA 🚀", "bot");
+    };
 
-        function addMessage(text, sender) {
-            const div = document.createElement("div");
-            div.classList.add("msg", sender);
-            div.innerText = text;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
+    function addMessage(text, sender) {
+        const div = document.createElement("div");
+        div.classList.add("msg", sender);
+        div.innerText = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        addMessage(text, "user");
+        input.value = "";
+
+        // 👇 CAMBIA ESTA URL AL DOMINIO DE RAILWAY QUE GENERES
+        const BASE_URL = "https://tu-dominio-generado.railway.app";
+
+        const endpoint = modoIA 
+            ? `${BASE_URL}/chat-ia`
+            : `${BASE_URL}/chat`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mensaje: text })
+            });
+            const data = await response.json();
+            addMessage(data.respuesta, "bot");
+        } catch (err) {
+            addMessage("❌ Error al comunicarse con el bot.", "bot");
+            console.error(err);
         }
+    }
 
-        async function sendMessage() {
-            const text = input.value.trim();
-            if (!text) return;
-            addMessage(text, "user");
-            input.value = "";
+    send.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", e => {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
 
-            const endpoint = modoIA 
-                ? "https://chatbot-haru.onrender.com/chat-ia" 
-                : "https://chatbot-haru.onrender.com/chat";
-
-            try {
-                const response = await fetch(endpoint, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ mensaje: text })
-                });
-                const data = await response.json();
-                addMessage(data.respuesta, "bot");
-            } catch (err) {
-                addMessage("❌ Error al comunicarse con el bot.", "bot");
-                console.error(err);
-            }
-        }
-
-        send.addEventListener("click", sendMessage);
-        input.addEventListener("keypress", e => {
-            if (e.key === "Enter") sendMessage();
-        });
-    </script>
 </body>
 </html>
+
